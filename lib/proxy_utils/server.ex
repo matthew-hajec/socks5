@@ -73,18 +73,12 @@ defmodule ProxyUtils.Server do
     with {:ok, <<5, nmethods>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()),
          {:ok, methods_bin} <- :gen_tcp.recv(client, nmethods, ProxyUtils.Config.recv_timeout()),
          methods = :binary.bin_to_list(methods_bin),
-         :ok <- authenticate(select_auth_method(methods), client) do
+         :ok <- authenticate(List.first(methods), client) do
       :ok
     else
       {:error, reason} ->
         {:error, reason}
     end
-  end
-
-  defp select_auth_method(methods) do
-    # Return the first supported method or 255 if none are supported
-
-    Enum.find(methods, fn m -> m end) || 255
   end
 
   defp authenticate(method, client) do
