@@ -9,6 +9,7 @@ defmodule ProxyUtils.Connectors.DNS do
 
   # Public API
   def connect(location) do
+    Logger.debug("Getting connector for #{inspect(location)}")
     case GenServer.call(__MODULE__, {:get_connector, location}) do
       {:ok, connector} ->
         connector.()
@@ -31,15 +32,18 @@ defmodule ProxyUtils.Connectors.DNS do
     connector = fn ->
       Logger.debug("Connecting to #{inspect(location)}")
 
-      #If the location is a domain, resolve it to an IP address
-      #otherwise, just use the location as-is
-      location = case location.type do
-        :domain ->
-          %{location | host: resolve(location.host) |> List.first }
+      # If the location is a domain, resolve it to an IP address
+      # otherwise, just use the location as-is
+      location =
+        case location.type do
+          :domain ->
+            %{location | host: resolve(location.host) |> List.first()}
 
-        _ ->
-          location
-      end
+          _ ->
+            location
+        end
+
+      Logger.debug("Resolved #{inspect(location)}. Connecting...")
 
       case :gen_tcp.connect(location.host, location.port, [:binary, active: false]) do
         {:ok, socket} ->
@@ -59,7 +63,8 @@ defmodule ProxyUtils.Connectors.DNS do
   end
 
   def resolve(hostname) do
-    {:ok, {:hostent, _name, _alias, _addrtype, _length, addr_list}} = :inet.gethostbyname(to_charlist(hostname))
+    {:ok, {:hostent, _name, _alias, _addrtype, _length, addr_list}} =
+      :inet.gethostbyname(to_charlist(hostname))
 
     addr_list
   end

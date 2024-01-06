@@ -23,7 +23,7 @@ defmodule ProxyUtils.Application do
       Supervisor.child_spec({connector(), connector_opts()}, restart: :permanent),
       {Task.Supervisor, [name: ProxyUtils.TaskSupervisor]},
       # This supervisor doesn't NEED to exist, since it's not a huge deal if a forwarder dies, but it's nice for debugging.
-      {Task.Supervisor, [name: ProxyUtils.ForwarderSupervisor]},
+      {Task.Supervisor, restart: :temporary, name: ProxyUtils.ForwarderSupervisor},
       Supervisor.child_spec({Task, fn -> ProxyUtils.Server.start(port()) end},
         restart: :permanent
       )

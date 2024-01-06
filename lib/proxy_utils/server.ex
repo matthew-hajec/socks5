@@ -157,10 +157,10 @@ defmodule ProxyUtils.Server do
 
         case cmd do
           1 ->
-            cmd_connect(client, location, atyp)
+            cmd_connect(client, location)
 
           _ ->
-            reply_error(client, 7, atyp)
+            reply_error(client, 7)
             {:error, :unknown_command}
         end
 
@@ -187,8 +187,7 @@ defmodule ProxyUtils.Server do
 
   defp get_ipv4(client) do
     with {:ok, <<a, b, c, d>>} <- :gen_tcp.recv(client, 4, ProxyUtils.Config.recv_timeout()),
-         {:ok, <<port1, port2>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
-      port = port1 * 256 + port2
+         {:ok, <<port::16>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       ip = {a, b, c, d}
 
       {:ok, %ProxyUtils.Location{host: ip, port: port, type: :ipv4}}
@@ -201,8 +200,7 @@ defmodule ProxyUtils.Server do
   defp get_domain(client) do
     with {:ok, <<len>>} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
          {:ok, domain} <- :gen_tcp.recv(client, len, ProxyUtils.Config.recv_timeout()),
-         {:ok, <<port1, port2>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
-      port = port1 * 256 + port2
+         {:ok, <<port::16>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       {:ok, %ProxyUtils.Location{host: domain, port: port, type: :domain}}
     else
       {:error, reason} ->
@@ -212,8 +210,7 @@ defmodule ProxyUtils.Server do
 
   defp get_ipv6(client) do
     with {:ok, <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>>} <- :gen_tcp.recv(client, 16, ProxyUtils.Config.recv_timeout()),
-         {:ok, <<port1, port2>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
-      port = port1 * 256 + port2
+         {:ok, <<port::16>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       ip = {a, b, c, d, e, f, g, h}
 
       {:ok, %ProxyUtils.Location{host: ip, port: port, type: :ipv6}}
@@ -223,12 +220,12 @@ defmodule ProxyUtils.Server do
     end
   end
 
-  defp cmd_connect(client, location, atyp) do
+  defp cmd_connect(client, location) do
     forwarder = ProxyUtils.Config.forwarder()
     connector = ProxyUtils.Config.connector()
 
     with {:ok, socket} <- connector.connect(location),
-         :ok <- reply_success(client, atyp),
+         :ok <- reply_success(client),
          {:ok, forwarder1} <-
            Task.Supervisor.start_child(ProxyUtils.ForwarderSupervisor, fn ->
              forwarder.tcp(client, socket)
@@ -237,21 +234,22 @@ defmodule ProxyUtils.Server do
            Task.Supervisor.start_child(ProxyUtils.ForwarderSupervisor, fn ->
              forwarder.tcp(socket, client)
            end),
-         :ok <- :gen_tcp.controlling_process(socket, forwarder1),
-         :ok <- :gen_tcp.controlling_process(client, forwarder2) do
-      :ok
+         :ok <- :gen_tcp.controlling_process(client, forwarder1),
+         :ok <- :gen_tcp.controlling_process(socket, forwarder2) do
+      Logger.debug("Bidirectional forwarding established data between #{inspect(:inet.peername(client))} and #{inspect(:inet.peername(socket))}")
+          :ok
     else
       {:error, reason} ->
-        reply_error(client, 1, atyp)
+        reply_error(client, 1)
         {:error, reason}
     end
   end
 
-  defp reply_error(client, error_code, atyp) do
-    :gen_tcp.send(client, <<5, error_code, 0, atyp, 0, 0, 0, 0, 0, 0>>)
+  defp reply_error(client, error_code) do
+    :gen_tcp.send(client, <<5, error_code, 0, 1, 0::32, 0::16>>)
   end
 
-  defp reply_success(client, atyp) do
-    :gen_tcp.send(client, <<5, 0, 0, atyp, 0, 0, 0, 0, 0, 0>>)
+  defp reply_success(client) do
+    :gen_tcp.send(client, <<5, 0, 0, 1, 0::32, 0::16>>)
   end
 end
