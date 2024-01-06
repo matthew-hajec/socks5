@@ -10,7 +10,7 @@ defmodule ForwardersTest do
     # Forward data sent from the client to the server
     {:ok, _pid} =
       Task.Supervisor.start_child(ProxyUtils.TaskSupervisor, fn ->
-        ProxyUtils.Forwarders.Direct.tcp(client, server, 100)
+        ProxyUtils.Forwarders.Direct.tcp(client, server)
       end)
 
     # Send some data from the client
