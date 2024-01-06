@@ -10,10 +10,11 @@ defmodule ProxyUtils.Forwarders.Direct do
 
   Returns `:ok` once the socket is ensured to be closed.
   """
-  def tcp(from, to, timeout) do
-    with {:ok, data} <- :gen_tcp.recv(from, 0, timeout),
+  require Logger
+  def tcp(from, to) do
+    with {:ok, data} <- :gen_tcp.recv(from, 0),
          :ok <- :gen_tcp.send(to, data) do
-      tcp(from, to, timeout)
+      tcp(from, to)
     else
       {:error, reason} ->
         ProxyUtils.SocketUtil.close_socket(from, reason)

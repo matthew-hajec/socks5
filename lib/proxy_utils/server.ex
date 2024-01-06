@@ -23,7 +23,7 @@ defmodule ProxyUtils.Server do
   - :no_return (the acceptorr runs until it is stopped or crashes)
   """
   def start(port) do
-    {:ok, socket} = :gen_tcp.listen(port, active: false, reuseaddr: true)
+    {:ok, socket} = :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true])
     Logger.info("Proxy listening on port #{port}")
     loop_acceptor(socket)
   end
@@ -70,9 +70,9 @@ defmodule ProxyUtils.Server do
   end
 
   defp handshake(client) do
-    with {:ok, [5]} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
-         {:ok, [nmethods]} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
-         {:ok, methods} <- :gen_tcp.recv(client, nmethods, ProxyUtils.Config.recv_timeout()),
+    with {:ok, <<5, nmethods>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()),
+         {:ok, methods_bin} <- :gen_tcp.recv(client, nmethods, ProxyUtils.Config.recv_timeout()),
+         methods = :binary.bin_to_list(methods_bin),
          :ok <- authenticate(select_auth_method(methods), client) do
       :ok
     else
@@ -116,15 +116,15 @@ defmodule ProxyUtils.Server do
   defp auth_username_password(client) do
     # Username/password authentication defined in RFC 1929
     with :ok <- :gen_tcp.send(client, <<5, 2>>),
-         {:ok, [1, ulen]} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()),
+         {:ok, <<1, ulen>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()),
          {:ok, username} <- :gen_tcp.recv(client, ulen, ProxyUtils.Config.recv_timeout()),
-         {:ok, [plen]} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
+         {:ok, <<plen>>} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
          {:ok, password} <- :gen_tcp.recv(client, plen, ProxyUtils.Config.recv_timeout()) do
       Logger.debug(
         "Authenticating with username #{inspect(username)} and password #{inspect(password)}"
       )
 
-      if username == ~c"user" && password == ~c"pass" do
+      if username == "user" && password == "pass" do
         :gen_tcp.send(client, <<1, 0>>)
         :ok
       else
@@ -151,8 +151,9 @@ defmodule ProxyUtils.Server do
   defp handle_request(client) do
     case :gen_tcp.recv(client, 4, ProxyUtils.Config.recv_timeout()) do
       {:ok, request} ->
-        {:ok, location} = get_destination(request, client)
-        [5, cmd, _rsv, atyp] = request
+        <<5, cmd, _rsv, atyp>> = request
+
+        {:ok, location} = get_destination(atyp, client)
 
         case cmd do
           1 ->
@@ -168,31 +169,28 @@ defmodule ProxyUtils.Server do
     end
   end
 
-  defp get_destination(request, client) do
-    case request do
-      [5, _cmd, _rsv, 1] ->
+  defp get_destination(atyp, client) do
+    case atyp do
+      1 ->
         get_ipv4(client)
 
-      [5, _cmd, _rsv, 3] ->
+      3 ->
         get_domain(client)
 
-      [5, _cmd, _rsv, 4] ->
+      4 ->
         get_ipv6(client)
 
       _ ->
-        Logger.debug("Unknown address type from request: #{inspect(request)}")
-        ProxyUtils.SocketUtil.close_socket(client)
         {:error, :unknown_address_type}
     end
   end
 
   defp get_ipv4(client) do
-    # Reformat with a with statment
-    with {:ok, [ip1, ip2, ip3, ip4]} <-
-           :gen_tcp.recv(client, 4, ProxyUtils.Config.recv_timeout()),
-         {:ok, [port1, port2]} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
-      ip = ~c"#{ip1}.#{ip2}.#{ip3}.#{ip4}"
+    with {:ok, <<a, b, c, d>>} <- :gen_tcp.recv(client, 4, ProxyUtils.Config.recv_timeout()),
+         {:ok, <<port1, port2>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       port = port1 * 256 + port2
+      ip = {a, b, c, d}
+
       {:ok, %ProxyUtils.Location{host: ip, port: port, type: :ipv4}}
     else
       {:error, reason} ->
@@ -201,9 +199,9 @@ defmodule ProxyUtils.Server do
   end
 
   defp get_domain(client) do
-    with {:ok, [len]} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
+    with {:ok, <<len>>} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
          {:ok, domain} <- :gen_tcp.recv(client, len, ProxyUtils.Config.recv_timeout()),
-         {:ok, [port1, port2]} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
+         {:ok, <<port1, port2>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       port = port1 * 256 + port2
       {:ok, %ProxyUtils.Location{host: domain, port: port, type: :domain}}
     else
@@ -213,12 +211,11 @@ defmodule ProxyUtils.Server do
   end
 
   defp get_ipv6(client) do
-    with {:ok, octets} <- :gen_tcp.recv(client, 16, ProxyUtils.Config.recv_timeout()),
-         {:ok, [port1, port2]} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
-      ip = Enum.map_join(octets, ":", fn octet -> Integer.to_string(octet, 16) end)
+    with {:ok, <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>>} <- :gen_tcp.recv(client, 16, ProxyUtils.Config.recv_timeout()),
+         {:ok, <<port1, port2>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       port = port1 * 256 + port2
+      ip = {a, b, c, d, e, f, g, h}
 
-      ip = String.to_charlist(ip)
       {:ok, %ProxyUtils.Location{host: ip, port: port, type: :ipv6}}
     else
       {:error, reason} ->
@@ -234,11 +231,11 @@ defmodule ProxyUtils.Server do
          :ok <- reply_success(client, atyp),
          {:ok, forwarder1} <-
            Task.Supervisor.start_child(ProxyUtils.ForwarderSupervisor, fn ->
-             forwarder.tcp(client, socket, ProxyUtils.Config.recv_timeout())
+             forwarder.tcp(client, socket)
            end),
          {:ok, forwarder2} <-
            Task.Supervisor.start_child(ProxyUtils.ForwarderSupervisor, fn ->
-             forwarder.tcp(socket, client, ProxyUtils.Config.recv_timeout())
+             forwarder.tcp(socket, client)
            end),
          :ok <- :gen_tcp.controlling_process(socket, forwarder1),
          :ok <- :gen_tcp.controlling_process(client, forwarder2) do

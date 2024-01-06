@@ -62,17 +62,5 @@ defmodule ProxyUtils.Connectors.DNS do
     {:ok, {:hostent, _name, _alias, _addrtype, _length, addr_list}} = :inet.gethostbyname(to_charlist(hostname))
 
     addr_list
-    |> Enum.map(&format_ip/1)
-  end
-
-  defp format_ip(ip) when is_tuple(ip) and tuple_size(ip) == 4 do
-    Tuple.to_list(ip) |> Enum.join(".")
-  end
-
-  defp format_ip(ip) when is_tuple(ip) and tuple_size(ip) == 8 do
-    ip
-    |> Tuple.to_list()
-    |> Enum.map(&Integer.to_string/1)
-    |> Enum.join(":")
   end
 end
