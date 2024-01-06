@@ -4,7 +4,7 @@ defmodule ProxyUtils.Server do
 
   This module is responsible for starting the server and handling client connections.
   """
-  alias ElixirSense.Log
+
   require Logger
 
   @doc """
@@ -120,7 +120,10 @@ defmodule ProxyUtils.Server do
          {:ok, username} <- :gen_tcp.recv(client, ulen, ProxyUtils.Config.recv_timeout()),
          {:ok, [plen]} <- :gen_tcp.recv(client, 1, ProxyUtils.Config.recv_timeout()),
          {:ok, password} <- :gen_tcp.recv(client, plen, ProxyUtils.Config.recv_timeout()) do
-      Logger.debug("Authenticating with username #{inspect(username)} and password #{inspect(password)}")
+      Logger.debug(
+        "Authenticating with username #{inspect(username)} and password #{inspect(password)}"
+      )
+
       if username == ~c"user" && password == ~c"pass" do
         :gen_tcp.send(client, <<1, 0>>)
         :ok
@@ -148,24 +151,12 @@ defmodule ProxyUtils.Server do
   defp handle_request(client) do
     case :gen_tcp.recv(client, 4, ProxyUtils.Config.recv_timeout()) do
       {:ok, request} ->
-        {:ok, {location, port}} = get_destination(request, client)
+        {:ok, location} = get_destination(request, client)
         [5, cmd, _rsv, atyp] = request
 
         case cmd do
           1 ->
-            cmd_connect(client, {location, port}, atyp)
-
-          2 ->
-            reply_error(client, 7, atyp)
-            {:error, :command_not_supported}
-
-          3 ->
-            reply_error(client, 7, atyp)
-            {:error, :command_not_supported}
-
-          4 ->
-            reply_error(client, 7, atyp)
-            {:error, :command_not_supported}
+            cmd_connect(client, location, atyp)
 
           _ ->
             reply_error(client, 7, atyp)
@@ -202,7 +193,7 @@ defmodule ProxyUtils.Server do
          {:ok, [port1, port2]} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       ip = ~c"#{ip1}.#{ip2}.#{ip3}.#{ip4}"
       port = port1 * 256 + port2
-      {:ok, {ip, port}}
+      {:ok, %ProxyUtils.Location{host: ip, port: port, type: :ipv4}}
     else
       {:error, reason} ->
         {:error, reason}
@@ -214,9 +205,7 @@ defmodule ProxyUtils.Server do
          {:ok, domain} <- :gen_tcp.recv(client, len, ProxyUtils.Config.recv_timeout()),
          {:ok, [port1, port2]} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       port = port1 * 256 + port2
-      # Convert domain to a charlist
-      domain = String.to_charlist(domain)
-      {:ok, {domain, port}}
+      {:ok, %ProxyUtils.Location{host: domain, port: port, type: :domain}}
     else
       {:error, reason} ->
         {:error, reason}
@@ -230,18 +219,18 @@ defmodule ProxyUtils.Server do
       port = port1 * 256 + port2
 
       ip = String.to_charlist(ip)
-      {:ok, {ip, port}}
+      {:ok, %ProxyUtils.Location{host: ip, port: port, type: :ipv6}}
     else
       {:error, reason} ->
         {:error, reason}
     end
   end
 
-  defp cmd_connect(client, {location, port}, atyp) do
+  defp cmd_connect(client, location, atyp) do
     forwarder = ProxyUtils.Config.forwarder()
     connector = ProxyUtils.Config.connector()
 
-    with {:ok, socket} <- connector.connect(location, port),
+    with {:ok, socket} <- connector.connect(location),
          :ok <- reply_success(client, atyp),
          {:ok, forwarder1} <-
            Task.Supervisor.start_child(ProxyUtils.ForwarderSupervisor, fn ->
