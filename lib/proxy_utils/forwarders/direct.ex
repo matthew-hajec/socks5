@@ -1,4 +1,4 @@
-defmodule Socks5.Forwarders.Direct do
+defmodule ProxyUtils.Forwarders.Direct do
   @moduledoc """
   A forwarder that simply forwards data from one socket to another.
   """
@@ -16,7 +16,7 @@ defmodule Socks5.Forwarders.Direct do
       tcp(from, to, timeout)
     else
       {:error, reason} ->
-        Socks5.SocketUtil.close_socket(from, reason)
+        ProxyUtils.SocketUtil.close_socket(from, reason)
     end
   end
 end

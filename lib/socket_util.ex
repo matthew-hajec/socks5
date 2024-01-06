@@ -1,4 +1,4 @@
-defmodule Socks5.SocketUtil do
+defmodule ProxyUtils.SocketUtil do
   @moduledoc """
   Utility functions for working with sockets.
   """

@@ -9,8 +9,8 @@ defmodule ForwardersTest do
 
     # Forward data sent from the client to the server
     {:ok, _pid} =
-      Task.Supervisor.start_child(Socks5.TaskSupervisor, fn ->
-        Socks5.Forwarders.Direct.tcp(client, server, 100)
+      Task.Supervisor.start_child(ProxyUtils.TaskSupervisor, fn ->
+        ProxyUtils.Forwarders.Direct.tcp(client, server, 100)
       end)
 
     # Send some data from the client

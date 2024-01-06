@@ -1,4 +1,4 @@
-defmodule Socks5.Connectors.PassThrough do
+defmodule ProxyUtils.Connectors.PassThrough do
   @moduledoc """
   A connector that simply returns a socket that is connected to the given location and port.
   """

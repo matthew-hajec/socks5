@@ -1,9 +1,9 @@
-defmodule Socks5.MixProject do
+defmodule ProxyUtils.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :socks5,
+      app: :proxy_utils,
       version: "0.1.0",
       elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
@@ -15,7 +15,7 @@ defmodule Socks5.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Socks5.Application, []}
+      mod: {ProxyUtils.Application, []}
     ]
   end
 
