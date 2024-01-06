@@ -22,10 +22,10 @@ defmodule ProxyUtils.Server do
 
   - :no_return (the acceptorr runs until it is stopped or crashes)
   """
-  def start(port) do
-    {:ok, socket} = :gen_tcp.listen(port, [:binary, active: false, reuseaddr: true])
-    Logger.info("Proxy listening on port #{port}")
-    loop_acceptor(socket)
+  def start(ip, port) do
+    {:ok, listen_socket} = :gen_tcp.listen(0, [:binary, {:ip, {127, 0, 0, 1}}, {:active, false}])
+    Logger.info("Proxy listening on #{inspect ip}:#{port}")
+    loop_acceptor(listen_socket)
   end
 
   defp loop_acceptor(socket) do
@@ -88,7 +88,9 @@ defmodule ProxyUtils.Server do
   end
 
   defp authenticate(method, client) do
-    Logger.debug("Authenticating with method #{inspect(method)}")
+    {:ok, {ip, port}} = :inet.peername(client)
+
+    Logger.debug("#{inspect(ip)}:#{inspect(port)} authenticating with method #{inspect(method)}")
 
     case method do
       0 ->
@@ -209,7 +211,8 @@ defmodule ProxyUtils.Server do
   end
 
   defp get_ipv6(client) do
-    with {:ok, <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>>} <- :gen_tcp.recv(client, 16, ProxyUtils.Config.recv_timeout()),
+    with {:ok, <<a::16, b::16, c::16, d::16, e::16, f::16, g::16, h::16>>} <-
+           :gen_tcp.recv(client, 16, ProxyUtils.Config.recv_timeout()),
          {:ok, <<port::16>>} <- :gen_tcp.recv(client, 2, ProxyUtils.Config.recv_timeout()) do
       ip = {a, b, c, d, e, f, g, h}
 
@@ -236,8 +239,11 @@ defmodule ProxyUtils.Server do
            end),
          :ok <- :gen_tcp.controlling_process(client, forwarder1),
          :ok <- :gen_tcp.controlling_process(socket, forwarder2) do
-      Logger.debug("Bidirectional forwarding established data between #{inspect(:inet.peername(client))} and #{inspect(:inet.peername(socket))}")
-          :ok
+      Logger.debug(
+        "Bidirectional forwarding established data between #{inspect(:inet.peername(client))} and #{inspect(:inet.peername(socket))}"
+      )
+
+      :ok
     else
       {:error, reason} ->
         reply_error(client, 1)

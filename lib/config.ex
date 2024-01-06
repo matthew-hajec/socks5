@@ -19,6 +19,11 @@ defmodule ProxyUtils.Config do
   def connector, do: Application.get_env(:proxy_utils, :connector)
 
   @doc """
+  Returns the connector options.
+  """
+  def connector_opts, do: Application.get_env(:proxy_utils, :connector_opts)
+
+  @doc """
   Returns the receive timeout.
   """
   def recv_timeout, do: Application.get_env(:proxy_utils, :recv_timeout)

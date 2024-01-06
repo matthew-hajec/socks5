@@ -20,11 +20,13 @@ defmodule ProxyUtils.Application do
 
     children = [
       # Start and supervise the connector
-      Supervisor.child_spec({connector(), connector_opts()}, restart: :permanent),
+      Supervisor.child_spec({ProxyUtils.Config.connector(), ProxyUtils.Config.connector_opts()},
+        restart: :permanent
+      ),
       {Task.Supervisor, [name: ProxyUtils.TaskSupervisor]},
       # This supervisor doesn't NEED to exist, since it's not a huge deal if a forwarder dies, but it's nice for debugging.
       {Task.Supervisor, restart: :temporary, name: ProxyUtils.ForwarderSupervisor},
-      Supervisor.child_spec({Task, fn -> ProxyUtils.Server.start(port()) end},
+      Supervisor.child_spec({Task, fn -> ProxyUtils.Server.start(ip(), port()) end},
         restart: :permanent
       )
     ]
@@ -36,14 +38,10 @@ defmodule ProxyUtils.Application do
   end
 
   defp port do
-    Application.get_env(:proxy_utils, :port) || @default_port
+    ProxyUtils.Config.port() || @default_port
   end
 
-  defp connector do
-    Application.get_env(:proxy_utils, :connector)
-  end
-
-  defp connector_opts do
-    Application.get_env(:proxy_utils, :connector_opts)
+  defp ip do
+    ProxyUtils.Config.ip() || {127, 0, 0, 1}
   end
 end
