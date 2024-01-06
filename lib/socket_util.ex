@@ -23,8 +23,11 @@ defmodule ProxyUtils.SocketUtil do
   - `:ok` if the socket is successfully closed.
   """
   def close_socket(socket, reason \\ nil) do
-    if reason do
-      Logger.debug("Closing socket: #{inspect(reason)}")
+    case reason do
+      nil -> :ok
+      :closed -> :ok
+      :timeout -> :ok
+      _ -> Logger.debug("Closing socket: #{inspect(reason)}")
     end
 
     :gen_tcp.close(socket)

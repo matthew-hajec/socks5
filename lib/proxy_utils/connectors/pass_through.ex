@@ -21,32 +21,51 @@ defmodule ProxyUtils.Connectors.PassThrough do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
-  def init(_opts) do
-    {:ok, nil}
+  def init(opts) do
+    {:ok, opts}
   end
 
-  def handle_call({:get_connector, location}, from, nil) do
+  def handle_call({:get_connector, location}, _from, state) do
     # Return a function that, when called, will connect to the given location and port
     connector = fn ->
-      Logger.debug("Connecting to #{inspect(location)}")
 
-      # If the location is a domain, return an error
-      if location.type == :domain do
-        {:error, :domain_not_supported}
-      end
 
-      case :gen_tcp.connect(location.host, location.port, [:binary, active: false]) do
-        {:ok, socket} ->
-          # Give the socket to the
-          {pid, _ref} = from
-          :gen_tcp.controlling_process(socket, pid)
-          {:ok, socket}
+      perform_dns = Keyword.get(state, :perform_dns, false)
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+      Logger.debug("Connecting to #{inspect(location)} (perform DNS: #{inspect(perform_dns)})")
+
+      connect_to_location(location, perform_dns)
     end
 
-    {:reply, {:ok, connector}, nil}
+    {:reply, {:ok, connector}, state}
+  end
+
+  defp connect_to_location(location, perform_dns) do
+    location =
+      if location.type == :domain and perform_dns do
+        {:ok , {ip, type}} = resolve(location.host)
+        %{location | host: ip, type: type}
+      else
+        location
+      end
+
+    :gen_tcp.connect(location.host, location.port, [:binary, active: false])
+  end
+
+  defp resolve(hostname) do
+    case :inet.gethostbyname(to_charlist(hostname)) do
+      {:ok, {:hostent, _name, _alias, _addrtype, _length, addr_list}} ->
+        first = addr_list |> List.first()
+        Logger.debug("Resolved #{inspect(hostname)} to #{inspect(first)}")
+
+        if tuple_size(first) == 4 do
+          {:ok, {first, :ipv4}}
+        else
+          {:ok, {first, :ipv6}}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 end
