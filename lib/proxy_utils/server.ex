@@ -23,9 +23,9 @@ defmodule ProxyUtils.Server do
   - :no_return (the acceptorr runs until it is stopped or crashes)
   """
   def start(ip, port) do
-    {:ok, listen_socket} = :gen_tcp.listen(0, [:binary, {:ip, {127, 0, 0, 1}}, {:active, false}])
-    Logger.info("Proxy listening on #{inspect ip}:#{port}")
-    loop_acceptor(listen_socket)
+    {:ok, socket} = :gen_tcp.listen(port, [:binary, ip: ip, active: false, reuseaddr: true])
+    Logger.info("Proxy listening on port #{port}")
+    loop_acceptor(socket)
   end
 
   defp loop_acceptor(socket) do

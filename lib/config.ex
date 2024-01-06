@@ -4,6 +4,11 @@ defmodule ProxyUtils.Config do
   """
 
   @doc """
+  Returns the IP address to listen on.
+  """
+  def ip, do: Application.get_env(:proxy_utils, :ip)
+
+  @doc """
   Returns the port to listen on.
   """
   def port, do: Application.get_env(:proxy_utils, :port)
