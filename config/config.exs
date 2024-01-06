@@ -9,4 +9,4 @@ config :proxy_utils, :recv_timeout, 5000
 
 config :proxy_utils, :ip, {127, 0, 0, 1}
 
-# config :socks5, :port, 1080
+config :proxy_utils, :port, 2030

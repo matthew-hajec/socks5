@@ -5,7 +5,6 @@ defmodule ProxyUtils.Application do
 
   use Application
 
-  @default_port 2030
 
   defp open_observer do
     Mix.ensure_application!(:wx)
@@ -38,10 +37,10 @@ defmodule ProxyUtils.Application do
   end
 
   defp port do
-    ProxyUtils.Config.port() || @default_port
+    ProxyUtils.Config.port()
   end
 
   defp ip do
-    ProxyUtils.Config.ip() || {127, 0, 0, 1}
+    ProxyUtils.Config.ip()
   end
 end
