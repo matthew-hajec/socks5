@@ -11,8 +11,13 @@ defmodule ProxyUtils.Connectors.PassThrough do
     perform_dns = Keyword.get(@conf, :perform_dns, false)
 
     if perform_dns do
-      {:ok, {ip, _type}} = resolve(domain_name)
-      :gen_tcp.connect(ip, port, [:binary, active: false])
+      case resolve(domain_name) do
+        {:ok, {ip, _type}} ->
+          :gen_tcp.connect(ip, port, [:binary, active: false])
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     else
       {:error, :dns_disabled}
     end
