@@ -5,7 +5,6 @@ defmodule ProxyUtils.Application do
 
   use Application
 
-
   defp open_observer do
     Mix.ensure_application!(:wx)
     Mix.ensure_application!(:runtime_tools)

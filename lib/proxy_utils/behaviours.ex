@@ -22,5 +22,4 @@ defmodule ProxyUtils.Behaviours do
 
     @callback tcp(any(), any()) :: :ok | {:error, any()}
   end
-
 end

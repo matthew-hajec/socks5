@@ -15,7 +15,7 @@ defmodule ProxyUtils.Forwarders.Direct do
 
   def tcp(from, to) do
     with {:ok, data} <- :gen_tcp.recv(from, 0, ProxyUtils.Config.recv_timeout()),
-          :ok <- :gen_tcp.send(to, data) do
+         :ok <- :gen_tcp.send(to, data) do
       tcp(from, to)
     else
       {:error, reason} ->

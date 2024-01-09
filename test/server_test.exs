@@ -32,15 +32,12 @@ defmodule ServerTest do
     ip = ProxyUtils.Config.ip()
     port = ProxyUtils.Config.port()
 
-
     {:ok, client} = :gen_tcp.connect(ip, port, [:binary, active: false])
-
 
     :gen_tcp.send(client, <<5, 1, 2>>)
 
     # print the response
     {:ok, <<5, 2>>} = :gen_tcp.recv(client, 0, ProxyUtils.Config.recv_timeout())
-
 
     username = "user"
     password = "pass"

@@ -1,5 +1,4 @@
 defmodule ProxyUtils.Connectors.PassThrough do
-
   @moduledoc """
   A connector that simply returns a socket that is connected to the given location and port.
   """
@@ -12,7 +11,7 @@ defmodule ProxyUtils.Connectors.PassThrough do
     perform_dns = Keyword.get(@conf, :perform_dns, false)
 
     if perform_dns do
-      {:ok , {ip, _type}} = resolve(domain_name)
+      {:ok, {ip, _type}} = resolve(domain_name)
       :gen_tcp.connect(ip, port, [:binary, active: false])
     else
       {:error, :dns_disabled}
@@ -23,10 +22,8 @@ defmodule ProxyUtils.Connectors.PassThrough do
     :gen_tcp.connect(ip, port, [:binary, active: false])
   end
 
-
   defp resolve(hostname)
-  when is_binary(hostname)
-  do
+       when is_binary(hostname) do
     case :inet.gethostbyname(to_charlist(hostname)) do
       {:ok, {:hostent, _name, _alias, _addrtype, _length, addr_list}} ->
         first = addr_list |> List.first()
