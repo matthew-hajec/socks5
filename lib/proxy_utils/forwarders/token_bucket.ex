@@ -37,7 +37,17 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
   end
 
   defp wait_for_bandwidth(id, scale_ms, limit, increment, timeout, start_tm) do
-    case Hammer.check_rate_inc("total", scale_ms, limit, increment) do
+    hammer_start = :os.system_time(:microsecond)
+    result = Hammer.check_rate_inc("total", scale_ms, limit, increment)
+    hammer_end = :os.system_time(:microsecond)
+    hammer_time = hammer_end - hammer_start
+
+    if hammer_time > 1_000 do
+      Logger.warning("Bandwidth limiter check took an excessive amount of time: #{hammer_time} µs")
+    end
+
+
+    case result do
       {:allow, _} ->
         :ok
 
@@ -46,6 +56,8 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
           {:error, :bandwidth_timeout}
         else
           :timer.sleep(10)
+          # Benchmark time taken to access the bucket in us
+
           wait_for_bandwidth(id, scale_ms, limit, increment, timeout, start_tm)
         end
     end
