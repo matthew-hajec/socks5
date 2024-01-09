@@ -2,55 +2,25 @@ defmodule ProxyUtils.Connectors.PassThrough do
   @moduledoc """
   A connector that simply returns a socket that is connected to the given location and port.
   """
-
   require Logger
-  use GenServer
 
-  # Public API
-  def connect(location) do
-    case GenServer.call(__MODULE__, {:get_connector, location}) do
-      {:ok, connector} ->
-        connector.()
+  @conf ProxyUtils.Config.connector_conf()
 
-      {:error, reason} ->
-        {:error, reason}
+  def connect(%ProxyUtils.Location{host: domain_name, port: port, type: :domain} = _location) do
+    perform_dns = Keyword.get(@conf, :perform_dns, false)
+
+    if perform_dns do
+      {:ok , {ip, _type}} = resolve(domain_name)
+      :gen_tcp.connect(ip, port, [:binary, active: false])
+    else
+      {:error, :dns_disabled}
     end
   end
 
-  def start_link(opts \\ []) do
-    GenServer.start_link(__MODULE__, opts, name: __MODULE__)
+  def connect(%ProxyUtils.Location{host: ip, port: port, type: _type} = _location) do
+    :gen_tcp.connect(ip, port, [:binary, active: false])
   end
 
-  def init(opts) do
-    {:ok, opts}
-  end
-
-  def handle_call({:get_connector, location}, _from, state) do
-    # Return a function that, when called, will connect to the given location and port
-    connector = fn ->
-
-
-      perform_dns = Keyword.get(state, :perform_dns, false)
-
-      Logger.debug("Connecting to #{inspect(location)} (perform DNS: #{inspect(perform_dns)})")
-
-      connect_to_location(location, perform_dns)
-    end
-
-    {:reply, {:ok, connector}, state}
-  end
-
-  defp connect_to_location(location, perform_dns) do
-    location =
-      if location.type == :domain and perform_dns do
-        {:ok , {ip, type}} = resolve(location.host)
-        %{location | host: ip, type: type}
-      else
-        location
-      end
-
-    :gen_tcp.connect(location.host, location.port, [:binary, active: false])
-  end
 
   defp resolve(hostname) do
     case :inet.gethostbyname(to_charlist(hostname)) do

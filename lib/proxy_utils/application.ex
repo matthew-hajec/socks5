@@ -18,10 +18,6 @@ defmodule ProxyUtils.Application do
     open_observer()
 
     children = [
-      # Start and supervise the connector
-      Supervisor.child_spec({ProxyUtils.Config.connector(), ProxyUtils.Config.connector_opts()},
-        restart: :permanent
-      ),
       {Task.Supervisor, [name: ProxyUtils.TaskSupervisor]},
       # This supervisor doesn't NEED to exist, since it's not a huge deal if a forwarder dies, but it's nice for debugging.
       {Task.Supervisor, restart: :temporary, name: ProxyUtils.ForwarderSupervisor},
