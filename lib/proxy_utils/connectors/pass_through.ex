@@ -7,7 +7,9 @@ defmodule ProxyUtils.Connectors.PassThrough do
 
   @conf ProxyUtils.Config.connector_conf()
 
-  def connect(%ProxyUtils.Location{host: domain_name, port: port, type: :domain} = _location) do
+  # How can I extract :location from the client?
+  # def connect(%ProxyUtils.Client{remote_location: location} = _client) do
+    def connect(%ProxyUtils.Client{remote_location: %{type: :domain, host: domain_name, port: port}} = client) do
     perform_dns = Keyword.get(@conf, :perform_dns, false)
 
     if perform_dns do
@@ -23,7 +25,13 @@ defmodule ProxyUtils.Connectors.PassThrough do
     end
   end
 
-  def connect(%ProxyUtils.Location{host: ip, port: port, type: _type} = _location) do
+  def connect(%ProxyUtils.Client{remote_location: location} = client) do
+
+    Logger.warning("For client #{inspect client}")
+
+    ip = location.host
+    port = location.port
+
     :gen_tcp.connect(ip, port, [:binary, active: false])
   end
 

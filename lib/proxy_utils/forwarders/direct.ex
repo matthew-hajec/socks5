@@ -13,10 +13,10 @@ defmodule ProxyUtils.Forwarders.Direct do
   @behaviour ProxyUtils.Behaviours.Forwarder
   require Logger
 
-  def tcp(from, to) do
+  def tcp(from, to, client) do
     with {:ok, data} <- :gen_tcp.recv(from, 0, ProxyUtils.Config.recv_timeout()),
          :ok <- :gen_tcp.send(to, data) do
-      tcp(from, to)
+      tcp(from, to, client)
     else
       {:error, reason} ->
         Logger.debug("Forwarding stopped: #{inspect(reason)}")

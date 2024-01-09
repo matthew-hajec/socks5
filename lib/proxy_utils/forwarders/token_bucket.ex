@@ -17,18 +17,28 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
   @buckettime 100
   @tokentimeout 5000
 
-  def tcp(from, to) do
+  def tcp(from, to, client) do
     # Check if there are enough tokens in the bucket
     with {:ok, data} <- :gen_tcp.recv(from, 0, ProxyUtils.Config.recv_timeout()),
-         :ok <- wait_for_bandwidth("total_tcp", @buckettime, trunc(@bitspersecond * @buckettime / 1000), byte_size(data) * 8, @tokentimeout),
+         :ok <-
+           wait_for_bandwidth(
+            name_bucket(client),
+             @buckettime,
+             trunc(@bitspersecond * @buckettime / 1000),
+             byte_size(data) * 8,
+             @tokentimeout
+           ),
          :ok <- :gen_tcp.send(to, data) do
-      tcp(from, to)
+      tcp(from, to, client)
     else
-      {:error, reason} ->
-        Logger.debug("Forwarding stopped: #{inspect(reason)}")
+      {:error, _reason} ->
         :gen_tcp.close(from)
         :gen_tcp.close(to)
     end
+  end
+
+  defp name_bucket(client) do
+    "tcp-#{client.username}"
   end
 
   defp wait_for_bandwidth(id, scale_ms, limit, increment, timeout) do
@@ -43,9 +53,10 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
     hammer_time = hammer_end - hammer_start
 
     if hammer_time > 1_000 do
-      Logger.warning("Bandwidth limiter check took an excessive amount of time: #{hammer_time} µs")
+      Logger.warning(
+        "Bandwidth limiter check took an excessive amount of time: #{hammer_time} µs"
+      )
     end
-
 
     case result do
       {:allow, _} ->
