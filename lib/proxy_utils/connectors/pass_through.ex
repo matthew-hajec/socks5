@@ -6,7 +6,9 @@ defmodule ProxyUtils.Connectors.PassThrough do
 
   @conf ProxyUtils.Config.connector_conf()
 
-  def connect(%ProxyUtils.Location{host: domain_name, port: port, type: :domain} = _location) do
+  def connect(%ProxyUtils.Location{host: domain_name, port: port, type: :domain} = _location)
+  when is_binary(domain_name) and is_integer(port)
+  do
     perform_dns = Keyword.get(@conf, :perform_dns, false)
 
     if perform_dns do
@@ -17,12 +19,16 @@ defmodule ProxyUtils.Connectors.PassThrough do
     end
   end
 
-  def connect(%ProxyUtils.Location{host: ip, port: port, type: _type} = _location) do
+  def connect(%ProxyUtils.Location{host: ip, port: port, type: _type} = _location)
+  when is_tuple(ip) and is_integer(port)
+  do
     :gen_tcp.connect(ip, port, [:binary, active: false])
   end
 
 
-  defp resolve(hostname) do
+  defp resolve(hostname)
+  when is_binary(hostname)
+  do
     case :inet.gethostbyname(to_charlist(hostname)) do
       {:ok, {:hostent, _name, _alias, _addrtype, _length, addr_list}} ->
         first = addr_list |> List.first()
