@@ -3,7 +3,7 @@ defmodule ProxyUtils.Connectors.PassThrough do
   @moduledoc """
   A connector that simply returns a socket that is connected to the given location and port.
   """
-  @behaviour ProxyUtils.Connector
+  @behaviour ProxyUtils.Behaviours.Connector
   require Logger
 
   @conf ProxyUtils.Config.connector_conf()

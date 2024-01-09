@@ -10,7 +10,7 @@ defmodule ProxyUtils.Forwarders.Direct do
 
   Returns `:ok` once the socket is ensured to be closed.
   """
-  @behaviour ProxyUtils.Forwarder
+  @behaviour ProxyUtils.Behaviours.Forwarder
   require Logger
 
   def tcp(from, to) do
