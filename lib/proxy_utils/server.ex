@@ -64,7 +64,7 @@ defmodule ProxyUtils.Server do
 
       {:error, reason} ->
         Logger.debug("Error handling client: #{inspect(reason)}")
-        ProxyUtils.SocketUtil.close_socket(client)
+        :gen_tcp.close(client)
         {:error, reason}
     end
   end

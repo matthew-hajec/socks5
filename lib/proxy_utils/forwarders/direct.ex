@@ -14,18 +14,14 @@ defmodule ProxyUtils.Forwarders.Direct do
   require Logger
 
   def tcp(from, to) do
-    try do
-      with {:ok, data} <- :gen_tcp.recv(from, 0, ProxyUtils.Config.recv_timeout()),
-           :ok <- :gen_tcp.send(to, data) do
-        tcp(from, to)
-      else
-        {:error, reason} ->
-          ProxyUtils.SocketUtil.close_socket(from, reason)
-      end
-    catch
-      :exit, _ ->
-        Logger.debug("Forwarding stopped: socket closed")
-        ProxyUtils.SocketUtil.close_socket(from, :normal)
+    with {:ok, data} <- :gen_tcp.recv(from, 0, ProxyUtils.Config.recv_timeout()),
+          :ok <- :gen_tcp.send(to, data) do
+      tcp(from, to)
+    else
+      {:error, reason} ->
+        Logger.debug("Forwarding stopped: #{inspect(reason)}")
+        :gen_tcp.close(from)
+        :gen_tcp.close(to)
     end
   end
 end
