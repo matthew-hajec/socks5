@@ -42,12 +42,10 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
         :ok
 
       {:deny, _} ->
-        Logger.error("Denied, it has been #{:os.system_time(:millisecond) - start_tm})")
-
         if :os.system_time(:millisecond) - start_tm > timeout do
-          Logger.error("Bandwidth timeout for #{id}")
           {:error, :bandwidth_timeout}
         else
+          :timer.sleep(10)
           wait_for_bandwidth(id, scale_ms, limit, increment, timeout, start_tm)
         end
     end
