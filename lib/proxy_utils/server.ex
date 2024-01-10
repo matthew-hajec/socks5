@@ -33,9 +33,8 @@ defmodule ProxyUtils.Server do
   defp loop_acceptor(listening_socket) do
     with {:ok, client_socket} <- :gen_tcp.accept(listening_socket),
          :ok <-
-
            start_client_task(client_socket) do
-            Logger.debug("Accepted connection from #{inspect(:inet.peername(client_socket))}")
+      Logger.debug("Accepted connection from #{inspect(:inet.peername(client_socket))}")
     else
       {:error, reason} ->
         Logger.debug("Error accepting connection: #{inspect(reason)}")
@@ -61,7 +60,7 @@ defmodule ProxyUtils.Server do
     client = ProxyUtils.Client.new(client_socket, :inet.peername(client_socket))
 
     with {:ok, username} <- handshake(client),
-          client = %ProxyUtils.Client{client | username: username},
+         client = %ProxyUtils.Client{client | username: username},
          :ok <- handle_request(client) do
       :ok
     else
@@ -77,8 +76,11 @@ defmodule ProxyUtils.Server do
 
   defp handshake(client) do
     client_socket = client.socket
-    with {:ok, <<5, nmethods>>} <- :gen_tcp.recv(client_socket, 2, ProxyUtils.Config.recv_timeout()),
-         {:ok, methods_bin} <- :gen_tcp.recv(client_socket, nmethods, ProxyUtils.Config.recv_timeout()),
+
+    with {:ok, <<5, nmethods>>} <-
+           :gen_tcp.recv(client_socket, 2, ProxyUtils.Config.recv_timeout()),
+         {:ok, methods_bin} <-
+           :gen_tcp.recv(client_socket, nmethods, ProxyUtils.Config.recv_timeout()),
          methods = :binary.bin_to_list(methods_bin),
          {:ok, username} <- authenticate(List.first(methods), client) do
       # Save the username to the client metadata
@@ -120,7 +122,7 @@ defmodule ProxyUtils.Server do
          {:ok, username} <- :gen_tcp.recv(client.socket, ulen, ProxyUtils.Config.recv_timeout()),
          {:ok, <<plen>>} <- :gen_tcp.recv(client.socket, 1, ProxyUtils.Config.recv_timeout()),
          {:ok, password} <- :gen_tcp.recv(client.socket, plen, ProxyUtils.Config.recv_timeout()) do
-      if username == "user" && password == "pass" do
+      if password == "pass" do
         :gen_tcp.send(client.socket, <<1, 0>>)
         {:ok, username}
       else
@@ -185,7 +187,8 @@ defmodule ProxyUtils.Server do
   end
 
   defp get_ipv4(client) do
-    with {:ok, <<a, b, c, d>>} <- :gen_tcp.recv(client.socket, 4, ProxyUtils.Config.recv_timeout()),
+    with {:ok, <<a, b, c, d>>} <-
+           :gen_tcp.recv(client.socket, 4, ProxyUtils.Config.recv_timeout()),
          {:ok, <<port::16>>} <- :gen_tcp.recv(client.socket, 2, ProxyUtils.Config.recv_timeout()) do
       ip = {a, b, c, d}
 
@@ -237,7 +240,7 @@ defmodule ProxyUtils.Server do
          :ok <- :gen_tcp.controlling_process(client.socket, forwarder1),
          :ok <- :gen_tcp.controlling_process(socket, forwarder2) do
       Logger.debug(
-        "Started forwarding between #{inspect client.origin_addr} and #{inspect(:inet.peername(socket))}"
+        "Started forwarding between #{inspect(client.origin_addr)} and #{inspect(:inet.peername(socket))}"
       )
 
       :ok

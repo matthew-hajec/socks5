@@ -7,7 +7,10 @@ defmodule ProxyUtils.Connectors.PassThrough do
 
   @conf ProxyUtils.Config.connector_conf()
 
-  def connect(%ProxyUtils.Client{remote_location: %{type: :domain, host: domain_name, port: port}} = _client) do
+  def connect(
+        %ProxyUtils.Client{remote_location: %{type: :domain, host: domain_name, port: port}} =
+          _client
+      ) do
     perform_dns = Keyword.get(@conf, :perform_dns, false)
 
     if perform_dns do
@@ -24,7 +27,7 @@ defmodule ProxyUtils.Connectors.PassThrough do
   end
 
   def connect(%ProxyUtils.Client{remote_location: location} = client) do
-    Logger.warning("For client #{inspect client}")
+    Logger.warning("For client #{inspect(client)}")
 
     ip = location.host
     port = location.port

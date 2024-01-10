@@ -13,8 +13,8 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
   @behaviour ProxyUtils.Behaviours.Forwarder
   require Logger
 
-  @bitspersecond 25_000_000
-  @buckettime 100
+  @bitspersecond 20_000_000
+  @buckettime 250
   @tokentimeout 5000
 
   def tcp(from, to, client) do
@@ -22,7 +22,7 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
     with {:ok, data} <- :gen_tcp.recv(from, 0, ProxyUtils.Config.recv_timeout()),
          :ok <-
            wait_for_bandwidth(
-            name_bucket(client),
+             name_bucket(client),
              @buckettime,
              trunc(@bitspersecond * @buckettime / 1000),
              byte_size(data) * 8,
@@ -38,7 +38,7 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
   end
 
   defp name_bucket(client) do
-    "tcp-#{client.username}"
+    "tcp#{client.username}"
   end
 
   defp wait_for_bandwidth(id, scale_ms, limit, increment, timeout) do
@@ -48,13 +48,13 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
 
   defp wait_for_bandwidth(id, scale_ms, limit, increment, timeout, start_tm) do
     hammer_start = :os.system_time(:microsecond)
-    result = Hammer.check_rate_inc("total", scale_ms, limit, increment)
+    result = Hammer.check_rate_inc(id, scale_ms, limit, increment)
     hammer_end = :os.system_time(:microsecond)
     hammer_time = hammer_end - hammer_start
 
-    if hammer_time > 1_000 do
+    if hammer_time > 5_000 do
       Logger.warning(
-        "Bandwidth limiter check took an excessive amount of time: #{hammer_time} µs"
+        "Bandwidth limiter check took an excessive amount of time (>5 milliseconds): #{hammer_time} µs"
       )
     end
 
@@ -66,7 +66,7 @@ defmodule ProxyUtils.Forwarders.TokenBucket do
         if :os.system_time(:millisecond) - start_tm > timeout do
           {:error, :bandwidth_timeout}
         else
-          :timer.sleep(10)
+          :timer.sleep(100)
           # Benchmark time taken to access the bucket in us
 
           wait_for_bandwidth(id, scale_ms, limit, increment, timeout, start_tm)
