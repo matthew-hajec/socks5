@@ -10,7 +10,7 @@ defmodule ProxyUtils.Behaviours do
     The connector is given a location and is expected to return a socket that is connected to the
     remote server.
     """
-    @callback connect(ProxyUtils.Location.t()) :: {:ok, any()} | {:error, any()}
+    @callback connect(ProxyUtils.Location.t(), ProxyUtils.Client) :: {:ok, any()} | {:error, any()}
   end
 
   defmodule Forwarder do
@@ -20,6 +20,6 @@ defmodule ProxyUtils.Behaviours do
     The forwarder is given two sockets and is expected to forward data from one socket to the other.
     """
 
-    @callback tcp(any(), any()) :: :ok | {:error, any()}
+    @callback tcp(any(), any(), ProxyUtils.Client) :: :ok | {:error, any()}
   end
 end
